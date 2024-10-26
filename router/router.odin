@@ -25,7 +25,7 @@ Route :: struct {
 	dyn:      bool,
 	method:   string,
 	path:     string,
-	call:     Maybe(proc(_: Request)),
+	call:     Maybe(proc(_: Request) -> string),
 	children: TreeElements,
 }
 
@@ -78,28 +78,13 @@ parse_request :: proc(req_string: []byte) -> Maybe(Request) {
 	return req
 }
 
-new_route :: proc(p, method: string, call: proc(_: Request)) {
-	req := new(Route)
-	req.method = method
-	req.path = p
-	req.call = call
-	route_tree[p] = req
-}
-
-home :: proc(r: Request) {
-	// do something
-	respond({})
-}
-
-
 walk_routes :: proc(
 	tree: ^map[string]^Route,
 	method, path: string,
 	full_path: []string,
 	i: int,
-	call: proc(_: Request),
+	call: proc(_: Request) -> string,
 ) {
-	fmt.eprintln(path)
 	route: ^Route
 	if path not_in tree {
 		route = new(Route)
@@ -108,7 +93,6 @@ walk_routes :: proc(
 	} else {
 		route = tree[path]
 	}
-	fmt.eprintln(tree)
 	if i == len(full_path) - 1 {
 		route.call = call
 		route.method = method
@@ -120,38 +104,37 @@ walk_routes :: proc(
 
 
 read_routes :: proc(
-	tree: ^map[string]^Route,
+	tree: map[string]^Route,
 	method, path: string,
 	full_path: []string,
 	i: int,
-	call: proc(_: Request),
-) {
-	fmt.eprintln(path)
-	route: ^Route
+	req: Request,
+) -> string {
 	if path not_in tree {
-		route = new(Route)
-		route.path = path
-		tree[path] = route
+		return respond({404, "Not found", "wodin", "text/html", "<html>Page not found</html>"})
 	} else {
-		route = tree[path]
-	}
-	fmt.eprintln(tree)
-	if i == len(full_path) - 1 {
-		route.call = call
-		route.method = method
-		return
-	} else {
-		walk_routes(&route.children, method, full_path[i + 1], full_path, i + 1, call)
+		route := tree[path]
+		if i == len(full_path) - 1 {
+			call, ok := route.call.?
+			if !ok {
+				return respond(
+					{404, "Not found", "wodin", "text/html", "<html>Page not found</html>"},
+				)
+			}
+			return call(req)
+		} else {
+			fmt.eprintln(route)
+			return read_routes(route.children, method, full_path[i + 1], full_path, i + 1, req)
+		}
 	}
 }
 
-register :: proc(method, path: string, call: proc(_: Request)) {
+register :: proc(method, path: string, call: proc(_: Request) -> string) {
 	full_path := strings.split(path, "/")
 	walk_routes(&route_tree, method, full_path[0], full_path, 0, call)
 }
 
-request_handler :: proc(req: Request) {
-	//
-	// full_path := strings.split(path, "/")
-	// walk_routes(&route_tree, method, full_path[0], full_path, 0, call)
+request_handler :: proc(req: Request) -> string {
+	full_path := strings.split(req.path, "/")
+	return read_routes(route_tree, req.method, full_path[0], full_path, 0, req)
 }

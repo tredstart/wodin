@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
+import "router"
 import "server"
 
 
@@ -33,5 +34,14 @@ main :: proc() {
 		}
 	}
 
+
+	router.register("get", "/home/hello", home)
+	router.register("get", "/", home)
 	server.listen_and_serve()
+}
+home :: proc(req: router.Request) -> string {
+	return router.respond({418, "I am a teapot", "wodin", "text/html", "<html>Hellope</html>"})
+}
+wait :: proc(req: router.Request) -> string {
+	return router.respond({418, "I am a teapot", "wodin", "text/html", "<html>What</html>"})
 }
