@@ -37,29 +37,36 @@ main :: proc() {
 
 	router.register(.GET, "/home/hello", wait)
 	router.register(.GET, "/", home)
+	router.register(.GET, "/home/:keyword", deez)
 	server.listen_and_serve()
 }
-home :: proc(req: router.Request) -> string {
-	return router.respond(
-		{
-			status_code = 418,
-			status = "I am a teapot",
-			server = "wodin",
-			content_type = "text/html",
-			body = "<html>Hellope</html>",
-			headers = {},
-		},
-	)
+home :: proc(req: router.Request) -> router.Response {
+	return {
+		status_code = 418,
+		status = "I am a teapot",
+		server = "wodin",
+		content_type = "text/html",
+		body = "<html>Hellope</html>",
+		headers = {},
+	}
 }
-wait :: proc(req: router.Request) -> string {
-	return router.respond(
-		{
-			303,
-			"I am a teapot",
-			"wodin",
-			"text/html",
-			"<html>What</html>",
-			{"Location" = "/", "Connection" = "close"},
-		},
-	)
+deez :: proc(req: router.Request) -> router.Response {
+	return {
+		200,
+		"OK",
+		"wodin",
+		"text/html",
+		fmt.tprintf("<html>Redirect on %s gottem</html>", req.path_params["keyword"]),
+		{},
+	}
+}
+wait :: proc(req: router.Request) -> router.Response {
+	return {
+		303,
+		"I am a teapot",
+		"wodin",
+		"text/html",
+		"<html>What</html>",
+		{"Location" = "/home/deeznuts", "Connection" = "close"},
+	}
 }

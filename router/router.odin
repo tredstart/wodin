@@ -20,6 +20,7 @@ Request :: struct {
 	connection:     string,
 	content_length: string,
 	headers:        map[string]string,
+	path_params:    map[string]string,
 }
 
 HttpMethod :: enum {
@@ -42,7 +43,7 @@ Route :: struct {
 	dyn:      bool,
 	method:   HttpMethod,
 	path:     string,
-	call:     Maybe(proc(_: Request) -> string),
+	call:     Maybe(proc(_: Request) -> Response),
 	children: [HttpMethod.LENGTH]TreeElements,
 }
 
@@ -106,15 +107,22 @@ walk_routes :: proc(
 	path: string,
 	full_path: []string,
 	i: int,
-	call: proc(_: Request) -> string,
+	call: proc(_: Request) -> Response,
 ) {
 	route: ^Route
-	if path not_in tree {
+	p := path
+	dyn := false
+	if len(path) > 1 && path[0] == ':' {
+		p = string(path[1:])
+		dyn = true
+	}
+	if p not_in tree {
 		route = new(Route)
-		route.path = path
-		tree[path] = route
+		route.dyn = dyn
+		route.path = p
+		tree[p] = route
 	} else {
-		route = tree[path]
+		route = tree[p]
 	}
 	if i == len(full_path) - 1 {
 		route.call = call
@@ -125,29 +133,37 @@ walk_routes :: proc(
 	}
 }
 
-
 read_routes :: proc(
 	tree: map[string]^Route,
 	method: HttpMethod,
 	path: string,
 	full_path: []string,
 	i: int,
-	req: Request,
-) -> string {
-	if path not_in tree {
-		return respond({404, "Not found", "wodin", "text/html", "<html>Page not found</html>", {}})
+	req: ^Request,
+) -> Response {
+	route, ok := tree[path]
+	if !ok {
+		for _, node in tree {
+			if node.dyn {
+				req.path_params[node.path] = path
+				resp := read_routes(tree, method, node.path, full_path, i + 1, req)
+				if resp.status_code != 404 {
+					return resp
+				}
+				delete_key(&req.path_params, node.path)
+			}
+		}
+		return {404, "Not found", "wodin", "text/html", "<html>Page not found</html>", {}}
 	} else {
-		route := tree[path]
-		if i == len(full_path) - 1 {
+		if i >= len(full_path) - 1 {
 			call, ok := route.call.?
 			if !ok {
-				return respond(
-					{404, "Not found", "wodin", "text/html", "<html>Page not found</html>", {}},
-				)
+				return {404, "Not found", "wodin", "text/html", "<html>Page not found</html>", {}}
 			}
-			return call(req)
+
+			resp := call(req^)
+			return resp
 		} else {
-			fmt.eprintln(route)
 			return read_routes(
 				route.children[method],
 				method,
@@ -160,12 +176,20 @@ read_routes :: proc(
 	}
 }
 
-register :: proc(method: HttpMethod, path: string, call: proc(_: Request) -> string) {
+register :: proc(method: HttpMethod, path: string, call: proc(_: Request) -> Response) {
 	full_path := strings.split(path, "/")
 	walk_routes(&route_tree, method, full_path[0], full_path, 0, call)
 }
 
-request_handler :: proc(req: Request) -> string {
+request_handler :: proc(req: ^Request) -> string {
 	full_path := strings.split(req.path, "/")
-	return read_routes(route_tree, string_to_method(req.method), full_path[0], full_path, 0, req)
+	response := read_routes(
+		route_tree,
+		string_to_method(req.method),
+		full_path[0],
+		full_path,
+		0,
+		req,
+	)
+	return respond(response)
 }

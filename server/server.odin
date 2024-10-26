@@ -48,8 +48,7 @@ listen_and_serve :: proc() {
 			continue
 		}
 
-		resp := router.request_handler(req)
-		log.info(resp)
+		resp := router.request_handler(&req)
 		os.write_string(os.Handle(client), resp)
 	}
 }
