@@ -10,6 +10,7 @@ Response :: struct {
 	server:       string,
 	content_type: string,
 	body:         string,
+	headers:      map[string]string,
 }
 
 Request :: struct {
@@ -21,12 +22,28 @@ Request :: struct {
 	headers:        map[string]string,
 }
 
+HttpMethod :: enum {
+	GET,
+	POST,
+	LENGTH,
+}
+
+string_to_method :: proc(m: string) -> HttpMethod {
+	if m == "GET" {
+		return .GET
+	}
+	if m == "POST" {
+		return .POST
+	}
+	return .LENGTH
+}
+
 Route :: struct {
 	dyn:      bool,
-	method:   string,
+	method:   HttpMethod,
 	path:     string,
 	call:     Maybe(proc(_: Request) -> string),
-	children: TreeElements,
+	children: [HttpMethod.LENGTH]TreeElements,
 }
 
 TreeElements :: map[string]^Route
@@ -34,10 +51,15 @@ TreeElements :: map[string]^Route
 route_tree := TreeElements{}
 
 respond :: proc(res: Response) -> string {
+	headers: string
+	for key, value in res.headers {
+		headers = fmt.tprintf("%s\r\n%s: %s", headers, key, value)
+	}
 	return fmt.tprintf(
-		"HTTP/1.1 %d %s\r\nServer: %s\r\nContent-type: %s\r\n\r\n%s\r\n",
+		"HTTP/1.1 %d %s%s\r\nServer: %s\r\nContent-type: %s\r\n\r\n%s\r\n",
 		res.status_code,
 		res.status,
+		headers,
 		res.server,
 		res.content_type,
 		res.body,
@@ -80,7 +102,8 @@ parse_request :: proc(req_string: []byte) -> Maybe(Request) {
 
 walk_routes :: proc(
 	tree: ^map[string]^Route,
-	method, path: string,
+	method: HttpMethod,
+	path: string,
 	full_path: []string,
 	i: int,
 	call: proc(_: Request) -> string,
@@ -98,43 +121,51 @@ walk_routes :: proc(
 		route.method = method
 		return
 	} else {
-		walk_routes(&route.children, method, full_path[i + 1], full_path, i + 1, call)
+		walk_routes(&route.children[method], method, full_path[i + 1], full_path, i + 1, call)
 	}
 }
 
 
 read_routes :: proc(
 	tree: map[string]^Route,
-	method, path: string,
+	method: HttpMethod,
+	path: string,
 	full_path: []string,
 	i: int,
 	req: Request,
 ) -> string {
 	if path not_in tree {
-		return respond({404, "Not found", "wodin", "text/html", "<html>Page not found</html>"})
+		return respond({404, "Not found", "wodin", "text/html", "<html>Page not found</html>", {}})
 	} else {
 		route := tree[path]
 		if i == len(full_path) - 1 {
 			call, ok := route.call.?
 			if !ok {
 				return respond(
-					{404, "Not found", "wodin", "text/html", "<html>Page not found</html>"},
+					{404, "Not found", "wodin", "text/html", "<html>Page not found</html>", {}},
 				)
 			}
 			return call(req)
 		} else {
 			fmt.eprintln(route)
-			return read_routes(route.children, method, full_path[i + 1], full_path, i + 1, req)
+			return read_routes(
+				route.children[method],
+				method,
+				full_path[i + 1],
+				full_path,
+				i + 1,
+				req,
+			)
 		}
 	}
 }
 
-register :: proc(method, path: string, call: proc(_: Request) -> string) {
+register :: proc(method: HttpMethod, path: string, call: proc(_: Request) -> string) {
 	full_path := strings.split(path, "/")
 	walk_routes(&route_tree, method, full_path[0], full_path, 0, call)
 }
 
 request_handler :: proc(req: Request) -> string {
 	full_path := strings.split(req.path, "/")
-	return read_routes(route_tree, req.method, full_path[0], full_path, 0, req)
+	return read_routes(route_tree, string_to_method(req.method), full_path[0], full_path, 0, req)
 }

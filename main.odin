@@ -35,13 +35,31 @@ main :: proc() {
 	}
 
 
-	router.register("get", "/home/hello", home)
-	router.register("get", "/", home)
+	router.register(.GET, "/home/hello", wait)
+	router.register(.GET, "/", home)
 	server.listen_and_serve()
 }
 home :: proc(req: router.Request) -> string {
-	return router.respond({418, "I am a teapot", "wodin", "text/html", "<html>Hellope</html>"})
+	return router.respond(
+		{
+			status_code = 418,
+			status = "I am a teapot",
+			server = "wodin",
+			content_type = "text/html",
+			body = "<html>Hellope</html>",
+			headers = {},
+		},
+	)
 }
 wait :: proc(req: router.Request) -> string {
-	return router.respond({418, "I am a teapot", "wodin", "text/html", "<html>What</html>"})
+	return router.respond(
+		{
+			303,
+			"I am a teapot",
+			"wodin",
+			"text/html",
+			"<html>What</html>",
+			{"Location" = "/", "Connection" = "close"},
+		},
+	)
 }

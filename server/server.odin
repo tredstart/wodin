@@ -42,14 +42,14 @@ listen_and_serve :: proc() {
 			os.write_string(
 				os.Handle(client),
 				router.respond(
-					{400, "Bad request", "wodin", "text/html", "<html>Bad request</html>"},
+					{400, "Bad request", "wodin", "text/html", "<html>Bad request</html>", {}},
 				),
 			)
 			continue
 		}
 
-		/// TODO: handle_request()
 		resp := router.request_handler(req)
+		log.info(resp)
 		os.write_string(os.Handle(client), resp)
 	}
 }
