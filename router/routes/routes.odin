@@ -47,3 +47,55 @@ home :: proc(req: router.Request) -> router.Response {
 	}
 	return {200, "OK", "wodin", "text/html", string(resp_body), {}}
 }
+
+article :: proc(req: router.Request) -> router.Response {
+	rows := client.Rows {
+		size = 4,
+	}
+	defer client.delete_rows(&rows)
+	e, ok := env.parse_env(".env").?
+	if !ok {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+		}
+	}
+	article_id, exists := req.path_params["article"]
+	if !exists {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+		}
+	}
+	query := fmt.tprintf("SELECT * FROM articles WHERE id='%s'", article_id)
+	content := fmt.tprint(
+		"{\"requests\":[{\"type\":\"execute\",\"stmt\":{\"sql\":\"",
+		query,
+		"\"}},{\"type\":\"close\"}]}",
+	)
+	client.client_request(&rows, e, content)
+	if len(rows.rows) < 1 {
+		return {
+			status_code = 404,
+			status = "Internal server error",
+			body = "Article does not exits. I'm sorry.",
+		}
+	}
+	art := rows.rows[0]
+
+	resp_body_item := `
+    <div class="">
+        <div class="">
+            <h1>%s</h1>
+            <h3>%s</h3>
+        </div>
+        <div class="">
+        %s
+        </div>
+    </div>
+    `
+	resp_body := fmt.tprintf(resp_body_item, art[3], art[2], art[1])
+	return {200, "OK", "wodin", "text/html", resp_body, {}}
+}

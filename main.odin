@@ -38,5 +38,6 @@ main :: proc() {
 
 	router.register(.GET, "/", routes.home)
 	router.register(.GET, "/blog/list", routes.home_list)
+	router.register(.GET, "/blog/:article", routes.article)
 	server.listen_and_serve()
 }

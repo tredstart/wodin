@@ -147,6 +147,7 @@ client_request :: proc(r: ^Rows, e: env.Env, content: string) {
 				}
 			} else {
 				log.warn("something wrong with the response")
+				log.warn(split)
 			}
 		}
 	}
