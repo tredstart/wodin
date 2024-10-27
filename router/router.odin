@@ -14,13 +14,12 @@ Response :: struct {
 }
 
 Request :: struct {
-	method:         string,
-	version:        string,
-	path:           string,
-	connection:     string,
-	content_length: string,
-	headers:        map[string]string,
-	path_params:    map[string]string,
+	method:      string,
+	version:     string,
+	path:        string,
+	form_data:   map[string]string,
+	headers:     map[string]string,
+	path_params: map[string]string,
 }
 
 HttpMethod :: enum {
@@ -70,11 +69,12 @@ respond :: proc(res: Response) -> string {
 parse_request :: proc(req_string: []byte) -> Maybe(Request) {
 	request := string(req_string)
 	lines := strings.split(request, "\r\n")
+	defer delete(lines)
 	req := Request{}
 	for line, i in lines {
 		switch i {
 		case 0:
-			l := strings.split(lines[i], " ")
+			l := strings.split(line, " ")
 			if len(l) != 3 {
 				log.error("Cannot parse request")
 				return nil
@@ -83,17 +83,16 @@ parse_request :: proc(req_string: []byte) -> Maybe(Request) {
 			req.path = l[1]
 			req.version = l[2]
 		case:
-			l := strings.split(lines[i], ":")
-			if l[0] == "Content-Length" {
-				req.content_length = l[1]
-				continue
-			}
-			if l[0] == "Connection" {
-				req.connection = l[1]
-				continue
-			}
+			l := strings.split(line, ":")
+			defer delete(l)
 			if len(l) > 1 {
 				req.headers[l[0]] = l[1]
+			} else {
+				form := strings.split(line, "=")
+				if len(form) > 1 {
+					sp := strings.split(form[1], "\x00")
+					req.form_data[form[0]] = sp[0]
+				}
 			}
 		}
 	}

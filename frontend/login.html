@@ -8,17 +8,9 @@
     <link href="/static/styles/out.css" rel="stylesheet"/>
 </head>
 <body hx-boost="true">
-    <div>
-        <ul>
-            <li>
-                <a href="/">home</a>
-            </li>
-            <li>
-                <a href="/about">about me</a>
-            </li>
-        </ul>
-    </div>
-    <div id="content" hx-get="/blog/list" hx-trigger="load">
-    </div>
+    <form hx-post="/login" hx-target="body">
+        <input type="password" name="password" placeholder="Password"/>
+        <input type="submit"/>
+    </form>
 </body>
 </html>

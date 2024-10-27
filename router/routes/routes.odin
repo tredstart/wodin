@@ -3,9 +3,11 @@ package routes
 import "../../client"
 import "../../env"
 import "../../router"
+import "core:crypto/hash"
 import "core:fmt"
 import "core:log"
 import "core:os"
+import "core:time"
 
 home_list :: proc(req: router.Request) -> router.Response {
 	rows := client.Rows {
@@ -23,7 +25,7 @@ home_list :: proc(req: router.Request) -> router.Response {
 	content := "{\"requests\":[{\"type\":\"execute\",\"stmt\":{\"sql\":\"SELECT id, created, title FROM articles\"}},{\"type\":\"close\"}]}"
 	client.client_request(&rows, e, content)
 	resp_body_item := `
-    <div class="" hx-get="/blog/%s" hx-trigger="click" hx-target="#content">
+    <div class="" hx-push-url="true" hx-get="/blog/%s" hx-trigger="click" hx-target="#content">
         <h3>%s</h3>
         <h4>%s</h4>
     </div>
@@ -38,6 +40,18 @@ home_list :: proc(req: router.Request) -> router.Response {
 
 home :: proc(req: router.Request) -> router.Response {
 	resp_body, ok := os.read_entire_file_from_filename("frontend/index.html")
+	if !ok {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+		}
+	}
+	return {200, "OK", "wodin", "text/html", string(resp_body), {}}
+}
+
+login :: proc(req: router.Request) -> router.Response {
+	resp_body, ok := os.read_entire_file_from_filename("frontend/login.html")
 	if !ok {
 		return {
 			status_code = 500,
@@ -98,4 +112,71 @@ article :: proc(req: router.Request) -> router.Response {
     `
 	resp_body := fmt.tprintf(resp_body_item, art[3], art[2], art[1])
 	return {200, "OK", "wodin", "text/html", resp_body, {}}
+}
+
+login_post :: proc(req: router.Request) -> router.Response {
+	e, ok := env.parse_env(".env").?
+	if !ok {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+		}
+	}
+	pass := e.pass
+	pp, form_ok := req.form_data["password"]
+	if !form_ok {
+		return {400, "Bad Request", "wodin", "text/html", "Request without password", {}}
+	}
+
+	s := hash_it(pp)
+    log.warn(s)
+	if pass != s {
+		return {401, "Unauthorized", "wodin", "text/html", "Wrong password", {}}
+	}
+	key := hash_it(fmt.tprintf("%s%v", pass, time.now()))
+	ok = os.write_entire_file("current_hash", transmute([]byte)key)
+	if !ok {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+		}
+	}
+	return {
+		303,
+		"See Other",
+		"wodin",
+		"text/html",
+		"<html>What</html>",
+		{
+			"Location" = "/create-article",
+			"Connection" = "close",
+			"Set-Cookie" = fmt.tprintf("%s; %d; SameSite=Strict", key, 24 * 60 * 60),
+		},
+	}
+}
+
+create_article :: proc(req: router.Request) -> router.Response {
+	log.error(req)
+	resp_body, ok := os.read_entire_file_from_filename("frontend/form.html")
+	if !ok {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+		}
+	}
+	return {200, "OK", "wodin", "text/html", string(resp_body), {}}
+}
+
+@(private)
+hash_it :: proc(pp: string) -> string {
+	rd := hash.hash(hash.Algorithm.SHA512_256, pp)
+	defer delete(rd)
+	s: string
+	for h in rd {
+		s = fmt.tprintf("%s%x", s, h)
+	}
+	return s
 }
