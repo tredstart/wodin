@@ -115,6 +115,22 @@ article :: proc(req: router.Request) -> router.Response {
 	return {200, "OK", "wodin", "text/html", resp_body, {}}
 }
 
+verify_login :: proc(req: router.Request) -> bool {
+	cookie, cook_ok := req.headers["Cookie"]
+	if !cook_ok {
+		return false
+	}
+	split := strings.split(cookie, "=")
+	current_hash, hash_ok := os.read_entire_file_from_filename("current_hash")
+	if !hash_ok {
+		return false
+	}
+	if len(split) < 2 || string(current_hash) != split[1] {
+		return false
+	}
+	return true
+}
+
 login_post :: proc(req: router.Request) -> router.Response {
 	e, ok := env.parse_env(".env").?
 	if !ok {
@@ -158,30 +174,7 @@ login_post :: proc(req: router.Request) -> router.Response {
 }
 
 create_article :: proc(req: router.Request) -> router.Response {
-	cookie, cook_ok := req.headers["Cookie"]
-	if !cook_ok {
-		return {
-			303,
-			"See Other",
-			"wodin",
-			"text/html",
-			"<html>What</html>",
-			{"Location" = "/login", "Connection" = "close"},
-		}
-	}
-	split := strings.split(cookie, "=")
-	current_hash, hash_ok := os.read_entire_file_from_filename("current_hash")
-	if !hash_ok {
-		return {
-			303,
-			"See Other",
-			"wodin",
-			"text/html",
-			"<html>What</html>",
-			{"Location" = "/login", "Connection" = "close"},
-		}
-	}
-	if len(split) < 2 || string(current_hash) != split[1] {
+	if !verify_login(req) {
 		return {
 			303,
 			"See Other",
@@ -200,6 +193,68 @@ create_article :: proc(req: router.Request) -> router.Response {
 		}
 	}
 	return {200, "OK", "wodin", "text/html", string(resp_body), {}}
+}
+
+post_article :: proc(req: router.Request) -> router.Response {
+	if !verify_login(req) {
+		return {
+			303,
+			"See Other",
+			"wodin",
+			"text/html",
+			"<html>What</html>",
+			{"Location" = "/login", "Connection" = "close"},
+		}
+	}
+
+
+	pp, title_ok := req.form_data["title"]
+	if !title_ok {
+		return {400, "Bad Request", "wodin", "text/html", "Request without title", {}}
+	}
+	content, content_ok := req.form_data["content"]
+	if !title_ok {
+		return {400, "Bad Request", "wodin", "text/html", "Request without content", {}}
+	}
+
+	t := fmt.tprintf("%v", time.now())
+	uuid := hash_it(t)
+
+
+	rows := client.Rows {
+		size = 3,
+	}
+	defer client.delete_rows(&rows)
+	e, ok := env.parse_env(".env").?
+	if !ok {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+		}
+	}
+
+	query := fmt.tprintf(
+		"INSERT INTO articles VALUES ('%s', '%s', '%s', '%s')",
+		uuid,
+		content,
+		t,
+		pp,
+	)
+	c := fmt.tprint(
+		"{\"requests\":[{\"type\":\"execute\",\"stmt\":{\"sql\":\"",
+		query,
+		"\"}},{\"type\":\"close\"}]}",
+	)
+	client.client_request(&rows, e, c)
+	return {
+		303,
+		"See Other",
+		"wodin",
+		"text/html",
+		"<html>What</html>",
+		{"Location" = "/", "Connection" = "close"},
+	}
 }
 
 @(private)

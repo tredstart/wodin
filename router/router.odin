@@ -75,6 +75,7 @@ parse_request :: proc(req_string: []byte) -> Maybe(Request) {
 		switch i {
 		case 0:
 			l := strings.split(line, " ")
+			defer delete(l)
 			if len(l) != 3 {
 				log.error("Cannot parse request")
 				return nil
@@ -88,10 +89,16 @@ parse_request :: proc(req_string: []byte) -> Maybe(Request) {
 			if len(l) > 1 {
 				req.headers[l[0]] = l[1]
 			} else {
-				form := strings.split(line, "=")
-				if len(form) > 1 {
-					sp := strings.split(form[1], "\x00")
-					req.form_data[form[0]] = sp[0]
+				form := strings.split(line, "&")
+				defer delete(form)
+				for pair in form {
+					kv := strings.split(pair, "=")
+					defer delete(kv)
+					if len(kv) > 1 {
+						sp := strings.split(kv[1], "\x00")
+						defer delete(sp)
+						req.form_data[kv[0]] = sp[0]
+					}
 				}
 			}
 		}
@@ -177,11 +184,13 @@ read_routes :: proc(
 
 register :: proc(method: HttpMethod, path: string, call: proc(_: Request) -> Response) {
 	full_path := strings.split(path, "/")
+	defer delete(full_path)
 	walk_routes(&route_tree, method, full_path[0], full_path, 0, call)
 }
 
 request_handler :: proc(req: ^Request) -> string {
 	full_path := strings.split(req.path, "/")
+	defer delete(full_path)
 	response := read_routes(
 		route_tree,
 		string_to_method(req.method),
