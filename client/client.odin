@@ -9,7 +9,17 @@ import "core:net"
 import "core:os"
 import "core:strings"
 
-Rows :: [dynamic][4]string
+Rows :: struct {
+	size: uint,
+	rows: [dynamic][]string,
+}
+
+delete_rows :: proc(r: ^Rows) {
+	for row in r.rows {
+		delete(row)
+	}
+	delete(r.rows)
+}
 
 open_request_socket :: proc(endpoint: string) -> net.TCP_Socket {
 	log.info(endpoint)
@@ -120,16 +130,17 @@ client_request :: proc(r: ^Rows, e: env.Env, content: string) {
 			defer delete(split)
 			if len(split) > 1 {
 				id := 0
-				counter := 0
+				counter: uint = 0
 				for row in split[1:] {
 					if counter == 0 {
-						append(r, [4]string{})
+						slice := make([]string, r.size)
+						append(&r.rows, slice)
 					}
 					sub := strings.split(row, "\"}")
 					defer delete(sub)
-					r[id][counter] = string(sub[0][1:])
+					r.rows[id][counter] = string(sub[0][1:])
 					counter += 1
-					if counter > 3 {
+					if counter > r.size - 1 {
 						id += 1
 						counter = 0
 					}

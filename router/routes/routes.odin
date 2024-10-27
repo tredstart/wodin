@@ -4,11 +4,14 @@ import "../../client"
 import "../../env"
 import "../../router"
 import "core:fmt"
+import "core:log"
 import "core:os"
 
 home_list :: proc(req: router.Request) -> router.Response {
-	rows := client.Rows{}
-	defer delete(rows)
+	rows := client.Rows {
+		size = 3,
+	}
+	defer client.delete_rows(&rows)
 	e, ok := env.parse_env(".env").?
 	if !ok {
 		return {
@@ -26,8 +29,8 @@ home_list :: proc(req: router.Request) -> router.Response {
     </div>
     `
 	resp_body: string
-	for row in rows {
-		item := fmt.tprintf(resp_body_item, row.x, row.z, row.y)
+	for row in rows.rows {
+		item := fmt.tprintf(resp_body_item, row[0], row[2], row[1])
 		resp_body = fmt.tprintf("%s\n%s", item, resp_body)
 	}
 	return {200, "OK", "wodin", "text/html", resp_body, {}}
