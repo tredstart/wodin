@@ -19,7 +19,7 @@ main :: proc() {
 	router.register(.GET, "/blog/:article", routes.article)
 	router.register(.GET, "/login", routes.login)
 	router.register(.POST, "/login", routes.login_post)
-	router.register(.GET, "/create-article", routes.article)
+	router.register(.GET, "/create-article", routes.create_article)
 	router.register(.POST, "/create-article", routes.article)
 
 	server.listen_and_serve()

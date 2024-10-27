@@ -7,6 +7,7 @@ import "core:crypto/hash"
 import "core:fmt"
 import "core:log"
 import "core:os"
+import "core:strings"
 import "core:time"
 
 home_list :: proc(req: router.Request) -> router.Response {
@@ -130,7 +131,6 @@ login_post :: proc(req: router.Request) -> router.Response {
 	}
 
 	s := hash_it(pp)
-    log.warn(s)
 	if pass != s {
 		return {401, "Unauthorized", "wodin", "text/html", "Wrong password", {}}
 	}
@@ -152,13 +152,45 @@ login_post :: proc(req: router.Request) -> router.Response {
 		{
 			"Location" = "/create-article",
 			"Connection" = "close",
-			"Set-Cookie" = fmt.tprintf("%s; %d; SameSite=Strict", key, 24 * 60 * 60),
+			"Set-Cookie" = fmt.tprintf("key=%s; Max-Age=%d; SameSite=Strict", key, 24 * 60 * 60),
 		},
 	}
 }
 
 create_article :: proc(req: router.Request) -> router.Response {
-	log.error(req)
+	cookie, cook_ok := req.headers["Cookie"]
+	if !cook_ok {
+		return {
+			303,
+			"See Other",
+			"wodin",
+			"text/html",
+			"<html>What</html>",
+			{"Location" = "/login", "Connection" = "close"},
+		}
+	}
+	split := strings.split(cookie, "=")
+	current_hash, hash_ok := os.read_entire_file_from_filename("current_hash")
+	if !hash_ok {
+		return {
+			303,
+			"See Other",
+			"wodin",
+			"text/html",
+			"<html>What</html>",
+			{"Location" = "/login", "Connection" = "close"},
+		}
+	}
+	if len(split) < 2 || string(current_hash) != split[1] {
+		return {
+			303,
+			"See Other",
+			"wodin",
+			"text/html",
+			"<html>What</html>",
+			{"Location" = "/login", "Connection" = "close"},
+		}
+	}
 	resp_body, ok := os.read_entire_file_from_filename("frontend/form.html")
 	if !ok {
 		return {
