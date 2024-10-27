@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta charset="UTF-8"/>
+    <script src="https://unpkg.com/htmx.org@1.9.9" integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX" crossorigin="anonymous"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link href="/static/styles/out.css" rel="stylesheet"/>
+</head>
+<body>
+    <div>
+        <ul>
+            <li>
+                <a href="/">home</a>
+            </li>
+            <li>
+                <a href="/">about me</a>
+            </li>
+        </ul>
+    </div>
+    <div id="content" hx-get="/blog/list" hx-trigger="load">
+    </div>
+</body>
+</html>
