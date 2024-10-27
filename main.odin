@@ -4,8 +4,6 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
-import "core:net"
-import "core:sys/linux"
 import "router"
 import "server"
 
