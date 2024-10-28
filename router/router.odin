@@ -66,45 +66,24 @@ respond :: proc(res: Response) -> string {
 	)
 }
 
-parse_request :: proc(req_string: []byte) -> Maybe(Request) {
-	request := string(req_string)
-	lines := strings.split(request, "\r\n")
-	defer delete(lines)
-	req := Request{}
-	for line, i in lines {
-		switch i {
-		case 0:
-			l := strings.split(line, " ")
-			defer delete(l)
-			if len(l) != 3 {
-				log.error("Cannot parse request")
-				return nil
-			}
-			req.method = l[0]
-			req.path = l[1]
-			req.version = l[2]
-		case:
-			l := strings.split(line, ":")
-			defer delete(l)
-			if len(l) > 1 {
-				req.headers[l[0]] = l[1]
-			} else {
-				form := strings.split(line, "&")
-				defer delete(form)
-				for pair in form {
-					kv := strings.split(pair, "=")
-					defer delete(kv)
-					if len(kv) > 1 {
-						sp := strings.split(kv[1], "\x00")
-						defer delete(sp)
-						req.form_data[kv[0]] = sp[0]
-					}
-				}
+parse_request :: proc(req: ^Request, line: string) {
+	l := strings.split(line, ": ")
+	defer delete(l)
+	if len(l) > 1 {
+		req.headers[l[0]] = l[1]
+	} else {
+		form := strings.split(line, "&")
+		defer delete(form)
+		for pair in form {
+			kv := strings.split(pair, "=")
+			defer delete(kv)
+			if len(kv) > 1 {
+				sp := strings.split(kv[1], "\x00")
+				defer delete(sp)
+				req.form_data[kv[0]] = sp[0]
 			}
 		}
 	}
-	log.info(req)
-	return req
 }
 
 walk_routes :: proc(

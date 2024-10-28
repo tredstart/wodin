@@ -100,6 +100,19 @@ article :: proc(req: router.Request) -> router.Response {
 	}
 	art := rows.rows[0]
 
+	pp := art[3]
+	content = art[1]
+
+	pp, _ = strings.replace_all(pp, "%20", " ")
+
+	pp, _ = strings.replace_all(pp, "%3B", ";")
+	content, _ = strings.replace_all(content, "%3B", ";")
+	content, _ = strings.replace_all(content, "%3C", "<")
+	content, _ = strings.replace_all(content, "%3D", "=")
+	content, _ = strings.replace_all(content, "%22", "\"")
+	content, _ = strings.replace_all(content, "%3E", ">")
+	content, _ = strings.replace_all(content, "%2F", "/")
+
 	resp_body_item := `
     <div class="">
         <div class="">
@@ -111,7 +124,7 @@ article :: proc(req: router.Request) -> router.Response {
         </div>
     </div>
     `
-	resp_body := fmt.tprintf(resp_body_item, art[3], art[2], art[1])
+	resp_body := fmt.tprintf(resp_body_item, pp, art[2], content)
 	return {200, "OK", "wodin", "text/html", resp_body, {}}
 }
 
@@ -237,11 +250,6 @@ post_article :: proc(req: router.Request) -> router.Response {
 		}
 	}
 
-	pp, _ = strings.replace_all(pp, "%20", " ")
-	content, _ = strings.replace_all(pp, "%20", " ")
-
-	pp, _ = strings.replace_all(pp, "%3B", ";")
-	content, _ = strings.replace_all(pp, "%3B", ";")
 
 	query := fmt.tprintf(
 		"INSERT INTO articles VALUES ('%s', '%s', '%s', '%s')",

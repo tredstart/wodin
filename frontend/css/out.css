@@ -668,8 +668,3 @@ a:hover {
 .hover\:cursor-pointer:hover {
   cursor: pointer;
 }
-
-.hover\:text-black:hover {
-  --tw-text-opacity: 1;
-  color: rgb(0 0 0 / var(--tw-text-opacity));
-}
