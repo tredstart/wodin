@@ -66,6 +66,19 @@ login :: proc(req: router.Request) -> router.Response {
 	return {200, "OK", "wodin", "text/html", string(resp_body), {}}
 }
 
+
+about :: proc(req: router.Request) -> router.Response {
+	resp_body, ok := os.read_entire_file_from_filename("frontend/about.html")
+	if !ok {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+		}
+	}
+	return {200, "OK", "wodin", "text/html", string(resp_body), {}}
+}
+
 article :: proc(req: router.Request) -> router.Response {
 	rows := client.Rows{}
 	defer delete(rows)
