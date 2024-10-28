@@ -5,10 +5,10 @@
     <meta charset="UTF-8"/>
     <script src="https://unpkg.com/htmx.org@1.9.9" integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX" crossorigin="anonymous"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <link href="/static/styles/out.css" rel="stylesheet"/>
+    <link href="/styles" rel="stylesheet"/>
 </head>
 <body hx-boost="true">
-    <form hx-post="/create-article" hx-target="body">
+    <form hx-push-url="true" hx-post="/create-article" hx-target="body">
         <input type="text" name="title" placeholder="Title"/>
         <textarea name="content" id="area"></textarea>
         <input type="submit"/>

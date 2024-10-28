@@ -220,6 +220,9 @@ post_article :: proc(req: router.Request) -> router.Response {
 	t := fmt.tprintf("%v", time.now())
 	uuid := hash_it(t)
 
+	date := strings.split(t, " ")
+	defer delete(date)
+
 
 	rows := client.Rows {
 		size = 3,
@@ -238,7 +241,7 @@ post_article :: proc(req: router.Request) -> router.Response {
 		"INSERT INTO articles VALUES ('%s', '%s', '%s', '%s')",
 		uuid,
 		content,
-		t,
+		date[0],
 		pp,
 	)
 	c := fmt.tprint(
