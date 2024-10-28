@@ -10,17 +10,7 @@ import "core:net"
 import "core:os"
 import "core:strings"
 
-Rows :: struct {
-	size: uint,
-	rows: [dynamic][]string,
-}
-
-delete_rows :: proc(r: ^Rows) {
-	for row in r.rows {
-		delete(row)
-	}
-	delete(r.rows)
-}
+Rows :: [dynamic][3]string
 
 open_request_socket :: proc(endpoint: string) -> net.TCP_Socket {
 	log.info(endpoint)
@@ -56,12 +46,10 @@ client_request :: proc(r: ^Rows, e: env.Env, content: string) {
 	stream_reader := io.to_reader(stream)
 	scanner: bufio.Scanner
 	bufio.scanner_init(&scanner, stream_reader)
-	defer bufio.scanner_destroy(&scanner)
 	reading_json := false
 	for bufio.scanner_scan(&scanner) {
 		line := bufio.scanner_text(&scanner)
 		split := strings.split(line, ": ")
-		defer delete(split)
 		if len(split) > 1 {
 			if split[0] == "status" && split[1] == "200" {
 				reading_json = true
@@ -73,20 +61,17 @@ client_request :: proc(r: ^Rows, e: env.Env, content: string) {
 		}
 		if reading_json {
 			split := strings.split(line, "value\":")
-			defer delete(split)
 			if len(split) > 1 {
 				id := 0
 				counter: uint = 0
 				for row in split[1:] {
 					if counter == 0 {
-						slice := make([]string, r.size)
-						append(&r.rows, slice)
+						append(r, [3]string{})
 					}
 					sub := strings.split(row, "\"}")
-					defer delete(sub)
-					r.rows[id][counter] = string(sub[0][1:])
+					r[id][counter] = string(sub[0][1:])
 					counter += 1
-					if counter > r.size - 1 {
+					if counter > 2 {
 						id += 1
 						counter = 0
 					}

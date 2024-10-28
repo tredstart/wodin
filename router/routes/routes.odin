@@ -4,6 +4,7 @@ import "../../client"
 import "../../env"
 import "../../router"
 import "core:crypto/hash"
+import "core:encoding/base64"
 import "core:fmt"
 import "core:log"
 import "core:os"
@@ -11,10 +12,8 @@ import "core:strings"
 import "core:time"
 
 home_list :: proc(req: router.Request) -> router.Response {
-	rows := client.Rows {
-		size = 3,
-	}
-	defer client.delete_rows(&rows)
+	rows := client.Rows{}
+	defer delete(rows)
 	e, ok := env.parse_env(".env").?
 	if !ok {
 		return {
@@ -26,13 +25,17 @@ home_list :: proc(req: router.Request) -> router.Response {
 	content := "{\"requests\":[{\"type\":\"execute\",\"stmt\":{\"sql\":\"SELECT id, created, title FROM articles\"}},{\"type\":\"close\"}]}"
 	client.client_request(&rows, e, content)
 	resp_body_item := `
-    <div class="hover:cursor-pointer" hx-push-url="true" hx-get="/blog/%s" hx-trigger="click" hx-target="#content">
+    <div 
+        class="hover:cursor-pointer border border-white w-full p-16 h-60 border-box" 
+        hx-push-url="true" 
+        hx-get="/blog/%s" 
+        hx-trigger="click" hx-target="#content" hx-swap="outerHTML">
         <h3>%s</h3>
         <h4>%s</h4>
     </div>
     `
 	resp_body: string
-	for row in rows.rows {
+	for row in rows {
 		item := fmt.tprintf(resp_body_item, row[0], row[2], row[1])
 		resp_body = fmt.tprintf("%s\n%s", item, resp_body)
 	}
@@ -64,10 +67,8 @@ login :: proc(req: router.Request) -> router.Response {
 }
 
 article :: proc(req: router.Request) -> router.Response {
-	rows := client.Rows {
-		size = 4,
-	}
-	defer client.delete_rows(&rows)
+	rows := client.Rows{}
+	defer delete(rows)
 	e, ok := env.parse_env(".env").?
 	if !ok {
 		return {
@@ -84,47 +85,73 @@ article :: proc(req: router.Request) -> router.Response {
 			body = "Internal server error",
 		}
 	}
-	query := fmt.tprintf("SELECT * FROM articles WHERE id='%s'", article_id)
-	content := fmt.tprint(
+	query := fmt.tprintf("SELECT content, created, title FROM articles WHERE id='%s'", article_id)
+	c := fmt.tprint(
 		"{\"requests\":[{\"type\":\"execute\",\"stmt\":{\"sql\":\"",
 		query,
 		"\"}},{\"type\":\"close\"}]}",
 	)
-	client.client_request(&rows, e, content)
-	if len(rows.rows) < 1 {
+	client.client_request(&rows, e, c)
+	if len(rows) < 1 {
 		return {
 			status_code = 404,
 			status = "Internal server error",
 			body = "Article does not exits. I'm sorry.",
 		}
 	}
-	art := rows.rows[0]
+	article := rows[0]
+	pp := article.z
+	content := string(base64.decode(article.x))
 
-	pp := art[3]
-	content = art[1]
+	content, _ = strings.replace_all(content, "%0A", "\n")
+	content, _ = strings.replace_all(content, "%3F", "?")
+	content, _ = strings.replace_all(content, "%2C", ",")
+	content, _ = strings.replace_all(content, "%26", "&")
+	content, _ = strings.replace_all(content, "%23", "#")
+	content, _ = strings.replace_all(content, "%3A", ":")
+	content, _ = strings.replace_all(content, "%7B", "{")
+	content, _ = strings.replace_all(content, "%7D", "}")
+	content, _ = strings.replace_all(content, "%2B", "+")
+	content, _ = strings.replace_all(content, "%25", "%")
+	content, _ = strings.replace_all(content, "%5C", "\\")
+	content, _ = strings.replace_all(content, "%5B", "[")
+	content, _ = strings.replace_all(content, "%5D", "]")
+	content, _ = strings.replace_all(content, "%24", "$")
+	content, _ = strings.replace_all(content, "%40", "@")
+	content, _ = strings.replace_all(content, "%E2%9E%9C", "-> ")
+	content, _ = strings.replace_all(content, "%E2%9C%97", " $ ")
 
-	pp, _ = strings.replace_all(pp, "%20", " ")
+	div := `<div id="content" class="w-[65%] mt-20 box-border">`
 
-	pp, _ = strings.replace_all(pp, "%3B", ";")
-	content, _ = strings.replace_all(content, "%3B", ";")
-	content, _ = strings.replace_all(content, "%3C", "<")
-	content, _ = strings.replace_all(content, "%3D", "=")
-	content, _ = strings.replace_all(content, "%22", "\"")
-	content, _ = strings.replace_all(content, "%3E", ">")
-	content, _ = strings.replace_all(content, "%2F", "/")
-
-	resp_body_item := `
-    <div class="">
-        <div class="">
+	resp_body_item := fmt.tprintf(
+		`<div class="p-4 box-border">
             <h1>%s</h1>
             <h3>%s</h3>
         </div>
-        <div class="">
+        <div class="border-t border-b border-white border-solid p-4">
         %s
         </div>
     </div>
-    `
-	resp_body := fmt.tprintf(resp_body_item, pp, art[2], content)
+    `,
+		pp,
+		article.y,
+		content,
+	)
+	resp_body := fmt.tprintf("%s%s", div, resp_body_item)
+	hx_req, hx_ok := req.headers["HX-Request"]
+	if !hx_ok {
+		template, file_ok := os.read_entire_file_from_filename("frontend/article.html")
+		if !file_ok {
+			return {
+				status_code = 500,
+				status = "Internal server error",
+				body = "Internal server error",
+			}
+		}
+		rsp, _ := strings.replace(string(template), "%s", resp_body, 1)
+		return {200, "OK", "wodin", "text/html", rsp, {}}
+	}
+
 	return {200, "OK", "wodin", "text/html", resp_body, {}}
 }
 
@@ -220,13 +247,14 @@ post_article :: proc(req: router.Request) -> router.Response {
 		}
 	}
 
-
 	pp, title_ok := req.form_data["title"]
 	if !title_ok {
+		log.error("no title, ", req.form_data)
 		return {400, "Bad Request", "wodin", "text/html", "Request without title", {}}
 	}
 	content, content_ok := req.form_data["content"]
 	if !title_ok {
+		log.error("no content, ", req.form_data)
 		return {400, "Bad Request", "wodin", "text/html", "Request without content", {}}
 	}
 
@@ -237,10 +265,8 @@ post_article :: proc(req: router.Request) -> router.Response {
 	defer delete(date)
 
 
-	rows := client.Rows {
-		size = 3,
-	}
-	defer client.delete_rows(&rows)
+	rows := client.Rows{}
+	defer delete(rows)
 	e, ok := env.parse_env(".env").?
 	if !ok {
 		return {
@@ -250,11 +276,23 @@ post_article :: proc(req: router.Request) -> router.Response {
 		}
 	}
 
+	pp, _ = strings.replace_all(pp, "%20", " ")
+	pp, _ = strings.replace_all(pp, "%3B", ";")
+
+	content, _ = strings.replace_all(content, "%20", " ")
+	content, _ = strings.replace_all(content, "%3B", ";")
+	content, _ = strings.replace_all(content, "%3C", "<")
+	content, _ = strings.replace_all(content, "%3D", "=")
+	content, _ = strings.replace_all(content, "%22", "\"")
+	content, _ = strings.replace_all(content, "%3E", ">")
+	content, _ = strings.replace_all(content, "%2F", "/")
+
+	b := base64.encode(transmute([]byte)content)
 
 	query := fmt.tprintf(
 		"INSERT INTO articles VALUES ('%s', '%s', '%s', '%s')",
 		uuid,
-		content,
+		b,
 		date[0],
 		pp,
 	)
