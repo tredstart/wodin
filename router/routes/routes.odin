@@ -26,7 +26,7 @@ home_list :: proc(req: router.Request) -> router.Response {
 	content := "{\"requests\":[{\"type\":\"execute\",\"stmt\":{\"sql\":\"SELECT id, created, title FROM articles\"}},{\"type\":\"close\"}]}"
 	client.client_request(&rows, e, content)
 	resp_body_item := `
-    <div class="" hx-push-url="true" hx-get="/blog/%s" hx-trigger="click" hx-target="#content">
+    <div class="hover:cursor-pointer" hx-push-url="true" hx-get="/blog/%s" hx-trigger="click" hx-target="#content">
         <h3>%s</h3>
         <h4>%s</h4>
     </div>
@@ -266,4 +266,24 @@ hash_it :: proc(pp: string) -> string {
 		s = fmt.tprintf("%s%x", s, h)
 	}
 	return s
+}
+
+styles :: proc(req: router.Request) -> router.Response {
+	resp_body, ok := os.read_entire_file_from_filename("frontend/css/out.css")
+	if !ok {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+			server = "wodin",
+		}
+	}
+	return {
+		200,
+		"OK",
+		"wodin",
+		"text/css",
+		string(resp_body),
+		{"X-Frame-Options" = "SAMEORIGIN", "X-XSS-Protection" = "1; mode=block"},
+	}
 }

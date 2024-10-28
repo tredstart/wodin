@@ -9,6 +9,7 @@ import "core:strings"
 
 
 listen_and_serve :: proc() {
+    log.info("Starting up")
 	endpoint := net.Endpoint {
 		address = net.IP4_Loopback,
 		port    = 6969,
