@@ -355,3 +355,29 @@ styles :: proc(req: router.Request) -> router.Response {
 		{"X-Frame-Options" = "SAMEORIGIN", "X-XSS-Protection" = "1; mode=block"},
 	}
 }
+
+images :: proc(req: router.Request) -> router.Response {
+	filename, exists := req.path_params["name"]
+	if !exists {
+		log.warn("filename not provided")
+		return {status_code = 404, status = "Not Found", body = "Not found", server = "wodin"}
+	}
+	log.warn(filename)
+	resp_body, ok := os.read_entire_file_from_filename(fmt.tprintf("images/%s", filename))
+	if !ok {
+		return {
+			status_code = 500,
+			status = "Internal server error",
+			body = "Internal server error",
+			server = "wodin",
+		}
+	}
+	return {
+		200,
+		"OK",
+		"wodin",
+		"image/*",
+		string(resp_body),
+		{"X-Frame-Options" = "SAMEORIGIN", "X-XSS-Protection" = "1; mode=block"},
+	}
+}

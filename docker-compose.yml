@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  blog:
+    build: ./wodin
+    ports:
+      - "6969:6969"
+    volumes:
+      - ./images:/app/images
+
+  database:
+    build: ./godin
+    ports:
+      - "4200:4200"
