@@ -237,6 +237,12 @@ post_article :: proc(req: router.Request) -> router.Response {
 		}
 	}
 
+	pp, _ = strings.replace_all(pp, "%20", " ")
+	content, _ = strings.replace_all(pp, "%20", " ")
+
+	pp, _ = strings.replace_all(pp, "%3B", ";")
+	content, _ = strings.replace_all(pp, "%3B", ";")
+
 	query := fmt.tprintf(
 		"INSERT INTO articles VALUES ('%s', '%s', '%s', '%s')",
 		uuid,
