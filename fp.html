@@ -1,0 +1,143 @@
+<h2 id="what-is-the-general-purpose-tho-">What is the General Purpose tho?</h2>
+<p>Some time ago, I came across this <a href="https://x.com/TheGingerBill/status/1825854232429224109">tweet</a>
+<img src="/images/gingertweet.jpg">
+Yeah, right. One does not simply make a game in a language that has only had dev releases so far...<br>OH MY GOD...<br><a href="https://x.com/karl_zylinski">Karl Zylinski</a> made <a href="https://store.steampowered.com/app/2781210/CAT__ONION/">Cat &amp; Onion</a>.
+It&#39;s incredible. Go play it, seriously.<br>Truth be told, I got interested
+in Odin because of Karl and his game. Before that, Zig had been much more
+compelling to me.<br>This got me thinking. What could be more general purpose
+than a game? I don&#39;t know the answer to that. 
+So, I&#39;ve decided to build something I&#39;m most familiar with.  </p>
+<br>
+<h2 id="web-app-in-what-now-">Web app in what now?</h2>
+<p>Yes, I&#39;m a web dev. Most of the time I spend programming web apps (focusing on the backend), and right now I work as an embedded dev.
+I have a free weekend, so how hard can it be?<br>Okay, so now I just need an http server. Surely Odin has one. Just gonna search packages real quick.
+<img src="/images/nohttp.jpg">
+Batteries included my @$%. How the &amp;@#! am I supposed to do backend without a simple http server??? Ah well. Project closed. Go home.  </p>
+<p>Except it&#39;s not. You, my dear reader, already know what is going to happen, right?</p>
+<br>
+<h2 id="quiche-eating-exercise">Quiche eating exercise</h2>
+<p>Even though Odin doesn&#39;t have an http package, it has net and posix,
+which means I can create a socket, open a tcp connection and handle some
+request/response buffoonery.<br>I am a <del>soy boy</del> programmer after all,
+aren&#39;t I?<br>I am not going through all the intricacies of making an http
+server from scratch, but if you&#39;re interested <a
+href="https://bruinsslot.jp/post/simple-http-webserver-in-c/">this</a> is a
+nice read. Let&#39;s set some limitations first:</p>
+<ol>
+<li>I shall not implement what is not needed. </li>
+<li>I shall not implement what is not needed. </li>
+<li>I shall not implement what is not needed. </li>
+<li>I shall not implement what is not needed. 
+</ol>
+<p>Should be easy. This should be fun one weekend project.</p>
+<h2 id="skill-issues-detected">Skill issues detected</h2>
+<p>One amazing thing about Odin is a <code>context</code> variable. It is passed implicitly to all the procedures (unless a proc is marked &quot;contextless&quot;), 
+and it has some useful fields. For example:</p>
+<pre><code class="lang-odin">    logger := <span class="hljs-keyword">log</span>.create_console_logger()
+    context.logger = logger
+    defer <span class="hljs-keyword">log</span>.destroy_console_logger(logger)
+
+    tcp_socket, <span class="hljs-keyword">err</span> := <span class="hljs-keyword">net</span>.create_socket(.IP4, .TCP)
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">err</span> != <span class="hljs-keyword">net</span>.Create_Socket_Error.None {
+        <span class="hljs-keyword">log</span>.errorf(<span class="hljs-string">"Cannot create tcp socket: exiting with status %d"</span>, <span class="hljs-keyword">err</span>)
+        <span class="hljs-built_in">return</span>
+    } <span class="hljs-keyword">else</span> {
+        <span class="hljs-keyword">log</span>.info(<span class="hljs-string">"Socket created successfuly"</span>)
+    }
+</code></pre>
+<p>Here, I&#39;m setting up a console logger, and the result of it is this:</p>
+<pre><code class="lang-zsh">➜  <span class="hljs-selector-tag">wodin</span> <span class="hljs-selector-tag">git</span><span class="hljs-selector-pseudo">:(master)</span> ✗ <span class="hljs-selector-tag">odin</span> <span class="hljs-selector-tag">run</span> .
+<span class="hljs-selector-attr">[INFO ]</span> <span class="hljs-selector-tag">---</span> <span class="hljs-selector-attr">[2024-10-25 08:08:12]</span> <span class="hljs-selector-attr">[main.odin:16:main()]</span> <span class="hljs-selector-tag">Socket</span> <span class="hljs-selector-tag">created</span> <span class="hljs-selector-tag">successfuly</span>
+</code></pre>
+<p>Pretty neat, right? By default all allocations are made with <code>context.allocator</code>.  </p>
+<p>TCP socket here, response there and we have a nice server running:
+<img src="/images/client.jpg">
+<img src="/images/server.jpg">
+Nice. What&#39;s the next step? Ah, right, lemme register some routes... Except I need to do routing manually now. How does it even work?<br>If you think about it, the path is just a branch of a tree, so that is how I am going to implement it. For path parameters, when registering new route,
+I will just check if value of the leaf starts with the &quot;:&quot; and add later I will add it to the <code>Request</code> struct. I know it&#39;s very limited but I don&#39;t need more.
+Okay. Now that the basic setup is working I can begin developing an actual web app. Let&#39;s start with some models. I&#39;m gonna need a model for a post and... Shit.
+I completely forgot about databases. There is nothing sql-related in Odin, and I don&#39;t actually want to write an sql driver from scratch for this project. Chat, it&#39;s over.  </p>
+<br>
+<h2 id="brasil-mentioned-">BRASIL MENTIONED???</h2>
+<p>WAIT. I CAN SEND an SQL REQUEST TO THE DATABASE WITH JSON. How? The gods of Turso probably foresaw this unfortunate turn of events and provided an actual api so that
+any language that doesn&#39;t have an sqlite driver for some reason can use Turso. Thank you, Brasil. WE ARE SO BACK. 
+All I need to do right now is to create some strings that will act as models for my project. The only problem with that is that turso accepts only https connections (duh) 
+and for this, you will need a TLS/SSL.
+After several hours of fighting with the ssl setup, I decided to cheat a bit. But only a bit! The one and only obvious solution is <del>TO CREATE MY OWN DATABASE</del>... 
+Okayy, calm down, grandpa, there is an easier way to do this without spending additional 50 years on a little maneuver. I&#39;m not proud to say it, but I will have to create a
+little microservice that will get that data for me. Fortunately, Go doesn&#39;t have severe skill issues (like I do), and can easily handle an https request. 
+This means I can simply resend an original request and receive a correct response. So, this is literally all the code needed to do that:</p>
+<pre><code class="lang-go"><span class="hljs-keyword">package</span> main
+
+<span class="hljs-keyword">import</span> (
+    <span class="hljs-string">"fmt"</span>
+    <span class="hljs-string">"io"</span>
+    <span class="hljs-string">"log"</span>
+    <span class="hljs-string">"net/http"</span>
+)
+
+<span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-title">main</span><span class="hljs-params">()</span></span> {
+    client := &amp;http.Client{}
+    http.HandleFunc(<span class="hljs-string">"/v2/pipeline"</span>, <span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(w http.ResponseWriter, r *http.Request)</span></span> {
+        req, err := http.NewRequest(r.Method, <span class="hljs-string">"https://"</span>+r.Host+r.URL.Path, r.Body)
+        <span class="hljs-keyword">if</span> err != <span class="hljs-literal">nil</span> {
+            fmt.Println(<span class="hljs-string">"error while creating new request, "</span>, err)
+        }
+        req.Header = r.Header
+        resp, err := client.Do(req)
+        <span class="hljs-keyword">if</span> err != <span class="hljs-literal">nil</span> {
+            fmt.Println(<span class="hljs-string">"err: "</span>, err)
+        }
+        body, err := io.ReadAll(resp.Body)
+        <span class="hljs-keyword">if</span> err != <span class="hljs-literal">nil</span> {
+            fmt.Println(<span class="hljs-string">"Error reading response body:"</span>, err)
+        }
+        fmt.Fprintf(w, <span class="hljs-string">"status: %d\r\n%s"</span>, resp.StatusCode, <span class="hljs-keyword">string</span>(body))
+    })
+
+    log.Fatal(http.ListenAndServe(<span class="hljs-string">":4200"</span>, <span class="hljs-literal">nil</span>))
+}
+</code></pre>
+<p>Like I said, I don&#39;t want to cheat too much, so I still need to parse the json response. After some splits and slices, I can get a bunch of rows from the database
+the way I need them to display. Now, the interesting part.</p>
+<br>
+<h2 id="a-horse-with-lasers">A horse with lasers</h2>
+<p>Obviously, to make a web application functional, I need to display some content. Again, writing a parser for a new templating language for this abomination of a backend 
+framework is beyond the scope this weekend. This means I need Vercel, Next.js, React and... Oh wait. I absolutely don&#39;t need it because I have htmx. I will make a bunch of static
+pages that will call endpoints and request data on load. To simplify this, the post must be written in valid html already. 
+Of course, to create a post I will need to be authenticated. Yes, I&#39;m rolling my own auth. Another easy task. Sometimes I hate and love myself at the same time.
+But overall, I&#39;m nearing the finish line. Just need to throw some Tailwind in there and ship it.</p>
+<br>
+<h2 id="deploy-shenanigans">Deploy shenanigans</h2>
+<p>For deploy I really have 2 options. Option 1: buy a bunch of raspberry pi, configure local setup, expose stuff to the internets, make a load balancer... Yeah, I&#39;m going 
+with an option 2, but not because I don&#39;t want to do it. I wanted to build my own server with rpi from the moment I learned about them. Right now I am 4 days into 2 day project
+and I think that &quot;imma build my own server rack&quot; contradicts &quot;I
+shall not build what is not needed&quot;. Well then, I make some dockerfiles and then docker compose my
+skill issues into services.
+Deploy to Digital Ocean so that the advocate of the competetency DHH himself
+can be proud of me. WE WILL ADD THINGS TO LEARN UNTIL MORALE IMPROVES. <br>That took me a while to figure out, but with the help of
+Claude 3.5 I managed to get docker compose and nginx file to run my server with
+a secure connection. 
+Now the fun part. I need the domain name. I have a history with a tiny red bird called true redstart. I think tredstart.dev for short should be fine. Yes.
+Right now you are reading a blog with a backend made (almost) completely in raw Odin. Only core package.  </p>
+<br>
+<h2 id="conclusions">Conclusions</h2>
+<p>Despite having severe skill issues, this was actually really easy to do. This was my first time building http server. Of course, some corners were cut. 
+There are a lot of things that this server does not handle. But. It does what it has to do. And I have a bunch of advice for you.</p>
+<h3 id="go-build-stuff">GO BUILD STUFF</h3>
+<p>Really. Even if it&#39;s a slop. This blog is the slopiest slop you can find on the internet. Go build your crazy idea. Doesn&#39;t matter that stack. The things you will learn, 
+the experience you gain are immesurable.  </p>
+<h3 id="competence-is-a-thing">Competence is a thing</h3>
+<p>DHH was right about everything. This project was fascinating for me because I actually challenged myself to dive deeper and get out of my comfort zone. Even with docker, which now
+I think, is great for deployments because it saves so much pain in the ass. But you won&#39;t know it unless you do something more with it. You won&#39;t know if anything is good 
+unless you become competent with it first.  </p>
+<h3 id="get-some-rests-in-your-coding-sessions">Get some rests in your coding sessions</h3>
+<p>&quot;I can code for 14 hours straight.&quot; Yeah. I can do as well. But the quality after 6, 8 or 10 goes down significantly. Make some pauses. Go excercise. Go shower. 
+Go scream at you cat. Okay, maybe don&#39;t do that, but you get the idea. Give your brain a rest.</p>
+<h3 id="drink-some-water-get-some-healthy-food">Drink some water get some healthy food</h3>
+<p>This should be obvious. Why am I suddenly giving general life advice? Ah, doesn&#39;t matter, I feel like if I improve those things I can do even better.  </p>
+<p>Software development is a weird industry. Two weeks ago I got rejected a job because I didn&#39;t know Vue framework and Dotnet so here I am writing a blog in a GENERAL PURPOSE 
+language called Odin from scratch to rant about things like that in the future. And yes, I plan to write more from now on. So thank you, GingerBill, for the beauty you have 
+created. I promise to learn it deeper because I think this is the language I was looking for. 
+I have many plans for this.<br>Stay tuned.<br>Or not.<br>Do what the $%@! you want, I don&#39;t care really.  </p>
+<p>Yours trully<br>true_redstart</p>

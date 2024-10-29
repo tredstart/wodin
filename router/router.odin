@@ -149,6 +149,9 @@ read_routes :: proc(
 			resp := call(req^)
 			return resp
 		} else {
+			if method >= HttpMethod.LENGTH {
+				return {405, "Method not allowed", "wodin", "text/html", "<html>Method not allowed</html>", {}}
+			}
 			return read_routes(
 				route.children[method],
 				method,
