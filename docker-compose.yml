@@ -1,14 +1,36 @@
-version: '3.8'
-
 services:
-  blog:
-    build: ./wodin
-    ports:
-      - "6969:6969"
-    volumes:
-      - ./images:/app/images
-
   database:
-    build: ./godin
+    build:
+      context: .
+      dockerfile: Dockerfile.g
     ports:
       - "4200:4200"
+
+  blog:
+    build:
+      context: .
+      dockerfile: Dockerfile.o
+    ports:
+      - "80:6969"
+    environment:
+      - SERVER_URL=http://database:4200
+    volumes:
+      - ./images:/app/images
+    depends_on:
+      - database
+    
+nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # Mount your SSL certificates
+      - ./images:/app/images
+    depends_on:
+      - blog
+      
+networks:
+  default:
+    name: intra

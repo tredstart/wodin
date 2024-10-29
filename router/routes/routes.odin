@@ -16,6 +16,7 @@ home_list :: proc(req: router.Request) -> router.Response {
 	defer delete(rows)
 	e, ok := env.parse_env(".env").?
 	if !ok {
+		log.warn("Cannot parse .env")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -45,6 +46,7 @@ home_list :: proc(req: router.Request) -> router.Response {
 home :: proc(req: router.Request) -> router.Response {
 	resp_body, ok := os.read_entire_file_from_filename("frontend/index.html")
 	if !ok {
+		log.warn("Cannot read index.html")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -57,6 +59,7 @@ home :: proc(req: router.Request) -> router.Response {
 login :: proc(req: router.Request) -> router.Response {
 	resp_body, ok := os.read_entire_file_from_filename("frontend/login.html")
 	if !ok {
+		log.warn("Cannot read login.html")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -70,6 +73,7 @@ login :: proc(req: router.Request) -> router.Response {
 about :: proc(req: router.Request) -> router.Response {
 	resp_body, ok := os.read_entire_file_from_filename("frontend/about.html")
 	if !ok {
+		log.warn("Cannot read about.html")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -84,6 +88,7 @@ article :: proc(req: router.Request) -> router.Response {
 	defer delete(rows)
 	e, ok := env.parse_env(".env").?
 	if !ok {
+		log.warn("Cannot parse .env (article)")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -92,11 +97,8 @@ article :: proc(req: router.Request) -> router.Response {
 	}
 	article_id, exists := req.path_params["article"]
 	if !exists {
-		return {
-			status_code = 500,
-			status = "Internal server error",
-			body = "Internal server error",
-		}
+		log.warn("No article in parameter")
+		return {status_code = 404, status = "Not found", body = "Page does not exist"}
 	}
 	query := fmt.tprintf("SELECT content, created, title FROM articles WHERE id='%s'", article_id)
 	c := fmt.tprint(
@@ -155,6 +157,7 @@ article :: proc(req: router.Request) -> router.Response {
 	if !hx_ok {
 		template, file_ok := os.read_entire_file_from_filename("frontend/article.html")
 		if !file_ok {
+			log.warn("Cannot read article")
 			return {
 				status_code = 500,
 				status = "Internal server error",
@@ -187,6 +190,7 @@ verify_login :: proc(req: router.Request) -> bool {
 login_post :: proc(req: router.Request) -> router.Response {
 	e, ok := env.parse_env(".env").?
 	if !ok {
+		log.warn("Cannot read .env (post login)")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -206,6 +210,7 @@ login_post :: proc(req: router.Request) -> router.Response {
 	key := hash_it(fmt.tprintf("%s%v", pass, time.now()))
 	ok = os.write_entire_file("current_hash", transmute([]byte)key)
 	if !ok {
+		log.warn("Cannot write to a file current hash")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -239,6 +244,7 @@ create_article :: proc(req: router.Request) -> router.Response {
 	}
 	resp_body, ok := os.read_entire_file_from_filename("frontend/form.html")
 	if !ok {
+		log.warn("Cannot read form.html")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -282,6 +288,7 @@ post_article :: proc(req: router.Request) -> router.Response {
 	defer delete(rows)
 	e, ok := env.parse_env(".env").?
 	if !ok {
+        log.warn("Cannot read .env post article")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -339,6 +346,7 @@ hash_it :: proc(pp: string) -> string {
 styles :: proc(req: router.Request) -> router.Response {
 	resp_body, ok := os.read_entire_file_from_filename("frontend/css/out.css")
 	if !ok {
+        log.warn("Cannot read css file")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -365,6 +373,7 @@ images :: proc(req: router.Request) -> router.Response {
 	log.warn(filename)
 	resp_body, ok := os.read_entire_file_from_filename(fmt.tprintf("images/%s", filename))
 	if !ok {
+        log.warn("Cannot read image")
 		return {
 			status_code = 500,
 			status = "Internal server error",

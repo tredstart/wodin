@@ -178,5 +178,8 @@ request_handler :: proc(req: ^Request) -> string {
 		0,
 		req,
 	)
+	when ODIN_DEBUG {
+		log.warn(response)
+	}
 	return respond(response)
 }

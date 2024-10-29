@@ -13,22 +13,23 @@ import "core:strings"
 listen_and_serve :: proc() {
 	log.info("Starting up")
 	endpoint := net.Endpoint {
-		address = net.IP4_Loopback,
+		address = net.IP4_Any,
 		port    = 6969,
 	}
 
 	tcp_socket, tcp_err := net.listen_tcp(endpoint)
 	if tcp_err != net.Listen_Error.None {
-		log.errorf("Cannot listen: exiting with status %d", tcp_err)
+		log.errorf("Cannot listen: exiting with status %v", tcp_err)
 		return
 	}
+	log.info("Socket opened")
 
 	for {
 		client, source, net_err := net.accept_tcp(tcp_socket)
 		defer net.close(client)
 
 		if tcp_err != net.Accept_Error.None {
-			log.errorf("Cannot accept: exiting with status %d", net_err)
+			log.errorf("Cannot accept: exiting with status %v", net_err)
 			return
 		}
 

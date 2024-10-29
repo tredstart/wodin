@@ -28,5 +28,6 @@ func main() {
 		fmt.Fprintf(w, "status: %d\r\n%s\r\nEND\r\n", resp.StatusCode, string(body))
 	})
 
+    log.Println("starting database service")
 	log.Fatal(http.ListenAndServe(":4200", nil))
 }

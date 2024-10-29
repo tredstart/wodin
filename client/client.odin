@@ -23,7 +23,7 @@ open_request_socket :: proc(endpoint: string) -> net.TCP_Socket {
 }
 
 client_request :: proc(r: ^Rows, e: env.Env, content: string) {
-	fd := open_request_socket("localhost:4200")
+	fd := open_request_socket("database:4200")
 	defer net.close(fd)
 	cl := len(content)
 	req := fmt.tprintf(
