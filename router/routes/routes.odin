@@ -90,7 +90,11 @@ about :: proc(req: router.Request) -> router.Response {
 article :: proc(req: router.Request) -> router.Response {
 	rows := client.Rows{}
 	defer delete(rows)
-	e, ok := env.parse_env(".env").?
+	env_file := ".env"
+	when ODIN_DEBUG {
+		env_file = "test.env"
+	}
+	e, ok := env.parse_env(env_file).?
 	if !ok {
 		log.warn("Cannot parse .env (article)")
 		return {
@@ -192,7 +196,11 @@ verify_login :: proc(req: router.Request) -> bool {
 }
 
 login_post :: proc(req: router.Request) -> router.Response {
-	e, ok := env.parse_env(".env").?
+	env_file := ".env"
+	when ODIN_DEBUG {
+		env_file = "test.env"
+	}
+	e, ok := env.parse_env(env_file).?
 	if !ok {
 		log.warn("Cannot read .env (post login)")
 		return {
@@ -290,7 +298,11 @@ post_article :: proc(req: router.Request) -> router.Response {
 
 	rows := client.Rows{}
 	defer delete(rows)
-	e, ok := env.parse_env(".env").?
+	env_file := ".env"
+	when ODIN_DEBUG {
+		env_file = "test.env"
+	}
+	e, ok := env.parse_env(env_file).?
 	if !ok {
 		log.warn("Cannot read .env post article")
 		return {
@@ -393,4 +405,17 @@ images :: proc(req: router.Request) -> router.Response {
 		string(resp_body),
 		{"X-Frame-Options" = "SAMEORIGIN", "X-XSS-Protection" = "1; mode=block"},
 	}
+}
+
+favicon :: proc(req: router.Request) -> router.Response {
+	resp_body, ok := os.read_entire_file_from_filename("images/favicon.ico")
+	if !ok {
+		log.warn("cannot get favicon")
+		return {
+			status_code = 404,
+			status = "favicon not found",
+			body = "favicon not found",
+		}
+	}
+	return {200, "OK", "wodin", "text/html", string(resp_body), {}}
 }

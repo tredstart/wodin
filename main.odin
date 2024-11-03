@@ -24,6 +24,7 @@ main :: proc() {
 	router.register(.GET, "/styles", routes.styles)
 	router.register(.GET, "/about", routes.about)
 	router.register(.GET, "/images/:name", routes.images)
+	router.register(.GET, "/favicon.ico", routes.favicon)
 
 	server.listen_and_serve()
 }
