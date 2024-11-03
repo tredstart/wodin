@@ -23,7 +23,11 @@ open_request_socket :: proc(endpoint: string) -> net.TCP_Socket {
 }
 
 client_request :: proc(r: ^Rows, e: env.Env, content: string) {
-	fd := open_request_socket("database:4200")
+	database_link := "database:4200"
+	when ODIN_DEBUG {
+		database_link = "localhost:4200"
+	}
+	fd := open_request_socket(database_link)
 	defer net.close(fd)
 	cl := len(content)
 	req := fmt.tprintf(

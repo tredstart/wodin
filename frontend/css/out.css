@@ -574,12 +574,12 @@ video {
   display: flex;
 }
 
-.h-8 {
-  height: 2rem;
-}
-
 .h-60 {
   height: 15rem;
+}
+
+.h-8 {
+  height: 2rem;
 }
 
 .w-8 {
@@ -647,16 +647,16 @@ video {
   border-color: rgb(255 255 255 / var(--tw-border-opacity));
 }
 
+.p-16 {
+  padding: 4rem;
+}
+
 .p-4 {
   padding: 1rem;
 }
 
 .p-5 {
   padding: 1.25rem;
-}
-
-.p-16 {
-  padding: 4rem;
 }
 
 .font-mono {

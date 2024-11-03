@@ -14,7 +14,11 @@ import "core:time"
 home_list :: proc(req: router.Request) -> router.Response {
 	rows := client.Rows{}
 	defer delete(rows)
-	e, ok := env.parse_env(".env").?
+	env_file := ".env"
+	when ODIN_DEBUG {
+		env_file = "test.env"
+	}
+	e, ok := env.parse_env(env_file).?
 	if !ok {
 		log.warn("Cannot parse .env")
 		return {
@@ -288,7 +292,7 @@ post_article :: proc(req: router.Request) -> router.Response {
 	defer delete(rows)
 	e, ok := env.parse_env(".env").?
 	if !ok {
-        log.warn("Cannot read .env post article")
+		log.warn("Cannot read .env post article")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -346,7 +350,7 @@ hash_it :: proc(pp: string) -> string {
 styles :: proc(req: router.Request) -> router.Response {
 	resp_body, ok := os.read_entire_file_from_filename("frontend/css/out.css")
 	if !ok {
-        log.warn("Cannot read css file")
+		log.warn("Cannot read css file")
 		return {
 			status_code = 500,
 			status = "Internal server error",
@@ -373,7 +377,7 @@ images :: proc(req: router.Request) -> router.Response {
 	log.warn(filename)
 	resp_body, ok := os.read_entire_file_from_filename(fmt.tprintf("images/%s", filename))
 	if !ok {
-        log.warn("Cannot read image")
+		log.warn("Cannot read image")
 		return {
 			status_code = 500,
 			status = "Internal server error",
