@@ -7,11 +7,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link href="/styles" rel="stylesheet"/>
 </head>
-<body hx-boost="true">
-    <form hx-push-url="true" hx-post="/create-article" hx-target="body">
-        <input type="text" name="title" placeholder="Title"/>
-        <textarea name="content" id="area"></textarea>
-        <input type="submit"/>
-    </form>
+<body hx-boost="true" class="font-mono">
+    <div class="p-52">
+        <form 
+            hx-push-url="true" 
+            hx-post="/create-article" 
+            hx-target="body"
+            >
+            <div class="container flex flex-col gap-5">
+                <input type="text" name="title" placeholder="Title"/>
+                <textarea name="content" id="area"></textarea>
+                <input type="submit"/>
+            </div>
+        </form>
+
+        <script type="application/javascript">
+            function autoResize(textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            }
+
+            // Add to your textarea
+            const textarea = document.querySelector('textarea');
+            textarea.addEventListener('input', () => autoResize(textarea)); 
+        </script>
+    </div>
 </body>
 </html>

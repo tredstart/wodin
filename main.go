@@ -24,7 +24,7 @@ func main() {
 			fmt.Println("Error reading response body:", err)
 			return
 		}
-        log.Println(string(body))
+        log.Println(string(body), "\n\n\n\n")
 		fmt.Fprintf(w, "status: %d\r\n%s\r\nEND\r\n", resp.StatusCode, string(body))
 	})
 

@@ -22,7 +22,15 @@ ol {
     @apply list-decimal pl-10 pt-2 pb-2
 }
 
-body, div {
+body, div, input, textarea {
     @apply font-mono text-gray-200 bg-zinc-800
+}
+
+input, textarea {
+    @apply border border-white border-solid p-4
+}
+
+textarea {
+    @apply min-h-96
 }
 
