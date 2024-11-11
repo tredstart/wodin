@@ -12,10 +12,11 @@ Node :: struct {
 }
 
 Leaf :: struct {
-	count:  uint,
-	head:   ^Node,
-	tail:   ^Node,
-	parent: ^Node,
+	count:       uint,
+	head:        ^Node,
+	tail:        ^Node,
+	parent:      ^Node,
+	parent_leaf: ^Leaf,
 }
 
 Tree :: struct {
@@ -114,8 +115,10 @@ insert_into_tree :: proc(tree: ^Tree, value: int) {
 		root.head.value = value
 		return
 	}
+
+	// for leaf.count == tree.order do grow up
 	leaf := insert_rec(tree.root, tree.root.head, value)
-	if leaf.count == tree.order {
+	for leaf.count == tree.order {
 		parent := leaf.parent
 		node := grow(leaf)
 		if parent == nil {
@@ -123,24 +126,33 @@ insert_into_tree :: proc(tree: ^Tree, value: int) {
 			new_leaf.count = 1
 			new_leaf.head = node
 			new_leaf.tail = node
+			leaf.parent_leaf = new_leaf
+			new_leaf.head.branch_right.parent_leaf = new_leaf
 			tree.root = new_leaf
 		} else {
 			if parent.value > node.value {
 				if parent.prev != nil {
 					parent.prev.next = node
+					parent.prev.branch_right = node.branch_left
 				}
 				node.prev = parent.prev
 				node.next = parent
 				parent.prev = node
+				node.next.branch_left = node.branch_right
 			} else {
 				if parent.next != nil {
 					parent.next.prev = node
+					parent.next.branch_left = node.branch_right
 				}
 				node.next = parent.next
 				node.prev = parent
 				parent.next = node
+				node.prev.branch_right = node.branch_left
 			}
+			leaf.parent_leaf.count += 1
+			node.branch_right.parent_leaf = leaf.parent_leaf
 		}
+		leaf = leaf.parent_leaf
 	}
 }
 
@@ -220,8 +232,7 @@ root_node_fills :: proc(t: ^testing.T) {
 	visited_print := [dynamic]^Leaf{}
 	defer delete(visited_print)
 	print_tree(tree.root, &visited_print)
-	// print_list(tree.root)
-	new_expect := []int{5, 8}
+	new_expect := []int{12}
 	it = Node_Iterator {
 		tmp = tree.root.head,
 	}
