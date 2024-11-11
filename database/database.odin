@@ -65,6 +65,9 @@ insert_rec :: proc(leaf: ^Leaf, node: ^Node, value: int) -> ^Leaf {
 	if value < node.value {
 		return insert_rec(node.branch_left, node.branch_left.head, value)
 	} else {
+		if node.next == nil && node.branch_right != nil {
+			return insert_rec(node.branch_right, node.branch_right.head, value)
+		}
 		return insert_rec(leaf, node.next, value)
 	}
 }
@@ -120,6 +123,7 @@ insert_into_tree :: proc(tree: ^Tree, value: int) {
 			new_leaf.count = 1
 			new_leaf.head = node
 			new_leaf.tail = node
+			tree.root = new_leaf
 		} else {
 			if parent.value > node.value {
 				if parent.prev != nil {
@@ -151,20 +155,44 @@ print_list :: proc(list: ^Leaf) {
 }
 
 
-burn_leaves :: proc(leaf: ^Leaf) {
+burn_leaves :: proc(leaf: ^Leaf, visited: ^[dynamic]^Leaf) {
+	if in_array(visited^, leaf) do return
+	else do append(visited, leaf)
 	leaf_iterator := Node_Iterator {
 		tmp = leaf.head,
 	}
 	for node in next_node(&leaf_iterator) {
-		if node.branch_left != nil do burn_leaves(node.branch_left)
-		if node.branch_right != nil do burn_leaves(node.branch_right)
+		if node.branch_left != nil do burn_leaves(node.branch_left, visited)
+		if node.branch_right != nil do burn_leaves(node.branch_right, visited)
 		free(node)
 	}
 	free(leaf)
 }
 
 burn_the_tree :: proc(tree: ^Tree) {
-	burn_leaves(tree.root)
+	visited_leaf := [dynamic]^Leaf{}
+	defer delete(visited_leaf)
+	burn_leaves(tree.root, &visited_leaf)
+}
+
+in_array :: proc(arr: [dynamic]^Leaf, value: ^Leaf) -> bool {
+	for el in arr {
+		if el == value do return true
+	}
+	return false
+}
+
+print_tree :: proc(leaf: ^Leaf, visited: ^[dynamic]^Leaf) {
+	if in_array(visited^, leaf) do return
+	else do append(visited, leaf)
+	leaf_iterator := Node_Iterator {
+		tmp = leaf.head,
+	}
+	for node in next_node(&leaf_iterator) {
+		if node.branch_left != nil do print_tree(node.branch_left, visited)
+		fmt.eprintln(node)
+		if node.branch_right != nil do print_tree(node.branch_right, visited)
+	}
 }
 
 @(test)
@@ -179,26 +207,25 @@ root_node_fills :: proc(t: ^testing.T) {
 	insert_into_tree(&tree, expected_root[3])
 	insert_into_tree(&tree, expected_root[0])
 	insert_into_tree(&tree, expected_root[1])
-	print_list(tree.root)
 	it := Node_Iterator {
 		tmp = tree.root.head,
 	}
 	for node, i in next_node(&it) {
 		assert(node.value == expected_root[i])
 	}
-	new_root := []int{4, 6, 8, 9, 10, 11}
-	insert_into_tree(&tree, new_root[2])
-	insert_into_tree(&tree, new_root[0])
-	insert_into_tree(&tree, new_root[1])
-	insert_into_tree(&tree, new_root[3])
-	insert_into_tree(&tree, new_root[5])
-	insert_into_tree(&tree, new_root[4])
-	new_expect := []int{4, 7}
+	new_root := []int{4, 6, 8, 9, 2, 15, 4223, 923, 42, 23, 12, 17, 14, 13, 10, 11}
+	for nr in new_root {
+		insert_into_tree(&tree, nr)
+	}
+	visited_print := [dynamic]^Leaf{}
+	defer delete(visited_print)
+	print_tree(tree.root, &visited_print)
+	new_expect := []int{5, 8}
 	it = Node_Iterator {
 		tmp = tree.root.head,
 	}
-	for node in next_node(&it) {
-		assert(tree.root.head.value == 4)
+	for node, i in next_node(&it) {
+		assert(node.value == new_expect[i])
 	}
 }
 
