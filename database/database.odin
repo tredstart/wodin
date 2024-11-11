@@ -220,6 +220,7 @@ root_node_fills :: proc(t: ^testing.T) {
 	visited_print := [dynamic]^Leaf{}
 	defer delete(visited_print)
 	print_tree(tree.root, &visited_print)
+	// print_list(tree.root)
 	new_expect := []int{5, 8}
 	it = Node_Iterator {
 		tmp = tree.root.head,
