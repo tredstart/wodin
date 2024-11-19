@@ -7,100 +7,101 @@ import "core:mem"
 import "core:slice"
 import "core:testing"
 
-ORDER :: 3
-MIN :: 1
+ORDER :: 5
+MIN :: 2
 
 Leaf :: struct {
-	items:    [dynamic]int,
-	children: [dynamic]^Leaf,
+	items:    [ORDER]int,
+	children: [ORDER + 1]^Leaf,
 	parent:   ^Leaf,
+	count:    int,
 }
 
 Tree :: struct {
 	root: ^Leaf,
 }
 
+inject_in_slice :: proc(src: []$T, item: T, pos: int) {
+	assert(pos <= len(src))
+	copy(src[pos + 1:], src[pos:])
+	src[pos] = item
+}
+
 insert_value :: proc(leaf: ^Leaf, value: int) -> int {
 	for el, i in leaf.items {
 		if value < el {
-			inject_at_elem(&leaf.items, i, value)
-			assert(len(leaf.items) <= ORDER)
+			inject_in_slice(leaf.items[:], value, i)
+			leaf.count += 1
+			assert(leaf.count <= ORDER)
 			return i
 		}
 	}
-	append(&leaf.items, value)
-	assert(len(leaf.items) <= ORDER)
-	return len(leaf.items) - 1
+	inject_in_slice(leaf.items[:], value, leaf.count)
+	leaf.count += 1
+	assert(leaf.count <= ORDER)
+	return leaf.count - 1
 }
 
 insert_into_leaf :: proc(leaf: ^Leaf, pos, value: int) -> ^Leaf {
-	assert(pos < len(leaf.items), fmt.tprintf("%v, %v, %d", leaf, pos, value))
-	element := leaf.items[pos]
-	if len(leaf.children) == 0 {
+	if leaf.children[0] == nil {
 		insert_value(leaf, value)
 		return leaf
 	}
 
-	if value < element {
+	assert(pos < leaf.count)
+
+	if value < leaf.items[pos] {
 		assert(leaf.children[pos] != nil)
 		return insert_into_leaf(leaf.children[pos], 0, value)
 	}
 
-	if pos == len(leaf.items) - 1 {
-		assert(leaf.children[len(leaf.children) - 1] != nil)
-		return insert_into_leaf(leaf.children[len(leaf.children) - 1], 0, value)
+	if pos == leaf.count - 1 {
+		assert(leaf.children[pos + 1] != nil)
+		return insert_into_leaf(leaf.children[pos + 1], 0, value)
 	}
 
 	return insert_into_leaf(leaf, pos + 1, value)
 }
 
-split_leaf :: proc(parent, child: ^Leaf) -> ^Leaf {
-	mid := child.items[MIN]
+split_leaf :: proc(parent, left_child: ^Leaf) -> ^Leaf {
+	mid := left_child.items[MIN]
 	pos := insert_value(parent, mid)
 
-	if len(parent.children) == 0 {
-		parent.children = make([dynamic]^Leaf, 1)
-	}
-
-	left_child := new(Leaf)
-	left_child.items = make([dynamic]int, MIN)
 	right_child := new(Leaf)
-	right_child.items = make([dynamic]int, MIN)
+
 	left_child.parent = parent
 	right_child.parent = parent
-	copy(left_child.items[:MIN], child.items[:MIN])
-	copy(right_child.items[:MIN], child.items[MIN + 1:])
-	half := len(child.children) / 2
+	right_child.count = MIN
 
-	left_child.children = make([dynamic]^Leaf, half)
-	right_child.children = make([dynamic]^Leaf, half)
-	if half > 0 {
-		copy(left_child.children[:], child.children[:half])
-		copy(right_child.children[:], child.children[half:])
+	copy(right_child.items[:MIN], left_child.items[MIN + 1:])
+	half := left_child.count / 2 + 1
+
+	copy(right_child.children[:], left_child.children[half:])
+	for child in right_child.children {
+		if child != nil && child.parent != nil do child.parent = right_child
 	}
+	slice.zero(left_child.children[half:])
+	slice.zero(left_child.items[MIN:])
+	left_child.count = MIN
 
 	parent.children[pos] = left_child
-	inject_at(&parent.children, pos + 1, right_child)
+	inject_in_slice(parent.children[:], right_child, pos + 1)
 
-	delete(child.items)
-	delete(child.children)
-	free(child)
 	return parent
 }
 
 insert_into_tree :: proc(tree: ^Tree, value: int) {
-	if tree.root.items == nil {
-		tree.root = new(Leaf)
-		append(&tree.root.items, value)
+	if tree.root.count == 0 {
+		tree.root.items[0] = value
+		tree.root.count += 1
 		return
 	}
 
 	leaf := insert_into_leaf(tree.root, 0, value)
-	for len(leaf.items) == ORDER {
+	for leaf.count == ORDER {
 		parent := leaf.parent
 		if parent == nil {
 			parent = new(Leaf)
-			parent.items = make([dynamic]int, 0)
 		}
 		leaf = split_leaf(parent, leaf)
 	}
@@ -110,26 +111,26 @@ insert_into_tree :: proc(tree: ^Tree, value: int) {
 
 delete_tree :: proc(leaf: ^Leaf) {
 	for child in leaf.children {
-		delete_tree(child)
+		if child != nil do delete_tree(child)
 	}
-	delete(leaf.children)
-	delete(leaf.items)
 	free(leaf)
 }
 
 gen_result :: proc(leaf: ^Leaf, result: ^[dynamic]int) {
 	for item, i in leaf.items {
-		if len(leaf.children) > 0 do gen_result(leaf.children[i], result)
+		if i >= leaf.count do break
+		if leaf.children[i] != nil do gen_result(leaf.children[i], result)
 		append(result, item)
-		if len(leaf.children) > 0 && i == len(leaf.items) - 1 do gen_result(leaf.children[i + 1], result)
+		if i == leaf.count - 1 && leaf.children[leaf.count] != nil do gen_result(leaf.children[leaf.count], result)
 	}
 }
 
 print_tree :: proc(leaf: ^Leaf) {
 	for item, i in leaf.items {
-		if len(leaf.children) > 0 do print_tree(leaf.children[i])
-		log.warn(leaf)
-		if len(leaf.children) > 0 && i == len(leaf.items) - 1 do print_tree(leaf.children[i + 1])
+		if i >= leaf.count do break
+		if leaf.children[i] != nil do print_tree(leaf.children[i])
+		log.warn(item)
+		if i == leaf.count - 1 && leaf.children[leaf.count] != nil do print_tree(leaf.children[leaf.count])
 	}
 }
 
@@ -137,9 +138,8 @@ print_tree :: proc(leaf: ^Leaf) {
 b_tree_insertion :: proc(t: ^testing.T) {
 	tree := Tree{}
 	tree.root = new(Leaf)
-	defer free(tree.root)
 	defer delete_tree(tree.root)
-	test_data := make([]int, 9)
+	test_data := make([]int, 100)
 	defer delete(test_data)
 	for &el in test_data {
 		el = cast(int)(rand.float64() * 1000)
@@ -153,7 +153,6 @@ b_tree_insertion :: proc(t: ^testing.T) {
 	defer delete(result)
 	gen_result(tree.root, &result)
 	log.warn("result: ", result)
-	print_tree(tree.root)
 	assert(len(result) == len(test_data))
 	for el, i in test_data {
 		assert(el == result[i])
