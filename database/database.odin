@@ -9,6 +9,7 @@ import "core:testing"
 
 ORDER :: 5
 MIN :: 2
+MAX :: 4
 
 Leaf :: struct {
 	items:    [ORDER]int,
@@ -134,17 +135,40 @@ print_tree :: proc(leaf: ^Leaf) {
 	}
 }
 
+
+delete_from_tree :: proc(leaf: ^Leaf, value: int) {
+	has_children := leaf.children[0] != nil
+	for item, i in leaf.items {
+		if value == item {
+			if leaf.count > MIN {
+				copy_slice(leaf.items[i:], leaf.items[i + 1:])
+				leaf.count -= 1
+			}
+		}
+		if value < item {
+			if has_children {
+				delete_from_tree(leaf.children[i], value)
+			} else {
+				log.warn("value not found", value)
+				return
+			}
+		} else {
+			// move either to the right children or next element
+		}
+	}
+}
+
 @(test)
 b_tree_insertion :: proc(t: ^testing.T) {
 	tree := Tree{}
 	tree.root = new(Leaf)
 	defer delete_tree(tree.root)
-	test_data := make([]int, 100)
+	test_data := make([]int, 10)
 	defer delete(test_data)
 	for &el in test_data {
 		el = cast(int)(rand.float64() * 1000)
 	}
-	log.warn("test data:", test_data)
+	log.warn("*INSERTION* test data:", test_data)
 	for el in test_data {
 		insert_into_tree(&tree, el)
 	}
@@ -152,10 +176,53 @@ b_tree_insertion :: proc(t: ^testing.T) {
 	result := [dynamic]int{}
 	defer delete(result)
 	gen_result(tree.root, &result)
-	log.warn("result: ", result)
+	log.warn("*INSERTION* result: ", result)
 	assert(len(result) == len(test_data))
 	for el, i in test_data {
 		assert(el == result[i])
 	}
 }
 
+@(test)
+b_tree_delete_leaf :: proc(t: ^testing.T) {
+	tree := Tree{}
+	tree.root = new(Leaf)
+	defer delete_tree(tree.root)
+	size := MIN + 1
+	test_data := make([]int, size)
+	copy_test := make([]int, size / 2)
+	defer delete(copy_test)
+	defer delete(test_data)
+	for &el, i in test_data {
+		el = cast(int)(rand.float64() * 1000)
+	}
+	for el in test_data {
+		insert_into_tree(&tree, el)
+	}
+	copy_slice(copy_test, test_data)
+	slice.sort(test_data)
+	slice.sort(copy_test)
+	log.warn("#DELETION# test data:", test_data)
+	log.warn("#DELETION# copy data:", copy_test)
+
+	for el in copy_test {
+		delete_from_tree(tree.root, el)
+	}
+
+	result := [dynamic]int{}
+	defer delete(result)
+	gen_result(tree.root, &result)
+
+	log.warn("#DELETION# result: ", result)
+	assert(len(result) == len(test_data) - 1)
+	cp_counter := 0
+	result_counter := 0
+	for el in test_data {
+		if cp_counter < len(copy_test) && el == copy_test[cp_counter] {
+			cp_counter += 1
+			continue
+		}
+		assert(result[result_counter] == el, fmt.tprintf("%d != %d", result[result_counter], el))
+		result_counter += 1
+	}
+}
